@@ -19,47 +19,49 @@ public protocol PlaceMatch {
     
     /// Secondary text of the place
     var secondaryText: String { get set }
+    
+    func detail(timeout: TimeInterval?, onSuccess: @escaping ((Place) -> (Void)), onFail: ((LocationError) -> (Void))?) -> Void
 }
 /// Public protocol for place find request
 public protocol FindPlaceRequest {
-
+    
     /// Success handler
     var success: FindPlaceRequest_Success? { get set }
-
+    
     /// Failure handler
     var failure: FindPlaceRequest_Failure? { get set }
-
+    
     /// Timeout interval
     var timeout: TimeInterval { get set }
-
+    
     /// Execute operation
     func execute()
-
+    
     /// Cancel current execution (if any)
     func cancel()
 }
 
 /// Find Place with Google
 public class FindPlaceRequest_Google: FindPlaceRequest {
-
+    
     /// session task
     private var task: JSONOperation? = nil
-
+    
     /// Success callback
     public var success: FindPlaceRequest_Success?
-
+    
     /// Failure callback
     public var failure: FindPlaceRequest_Failure?
-
+    
     /// Timeout interval
     public var timeout: TimeInterval
-
+    
     /// Input to search
     public private(set) var input: String
-
+    
     /// Language in which the results are displayed
     public private(set) var language: FindPlaceRequest_Google_Language?
-
+    
     /// Init new find place operation
     ///
     /// - Parameters:
@@ -70,7 +72,7 @@ public class FindPlaceRequest_Google: FindPlaceRequest {
         self.timeout = timeout ?? 10
         self.language = language ?? FindPlaceRequest_Google_Language.english
     }
-
+    
     public func execute() {
         guard let APIKey = Locator.api.googleAPIKey else {
             self.failure?(LocationError.missingAPIKey(forService: "google"))
@@ -94,11 +96,11 @@ public class FindPlaceRequest_Google: FindPlaceRequest {
         }
         self.task?.execute()
     }
-
+    
     public func cancel() {
         self.task?.cancel()
     }
-
+    
 }
 
 /// Google Autocomplete supported languages
@@ -214,28 +216,28 @@ public enum FindPlaceRequest_Google_Language: String {
 
 /// Identify a single match entry for a place search
 public class Google_PlaceMatch: PlaceMatch {
-
+    
     /// session task
     private var task: JSONOperation? = nil
-
+    
     /// Identifier of the place
     public internal(set) var placeID: String
-
+    
     /// Name of the place
     public internal(set) var name: String
-
+    
     /// Main text of the place
     public var mainText: String
-
+    
     /// Secondary text of the place
     public var secondaryText: String
-
+    
     /// Place types string (google)
     public internal(set) var types: [String]
-
+    
     /// Place detail cache
     public private(set) var detail: Place?
-
+    
     public init?(_ json: JSON) {
         guard let placeID = json["place_id"].string else { return nil }
         self.placeID = placeID
@@ -244,11 +246,11 @@ public class Google_PlaceMatch: PlaceMatch {
         self.secondaryText = json["structured_formatting"]["secondary_text"].stringValue
         self.types = json["types"].arrayValue.map { $0.stringValue }
     }
-
+    
     public static func load(list: [JSON]) -> [PlaceMatch] {
         return list.compactMap { Google_PlaceMatch($0) }
     }
-
+    
     public func detail(timeout: TimeInterval? = nil,
                        onSuccess: @escaping ((Place) -> (Void)),
                        onFail: ((LocationError) -> (Void))? = nil) {
@@ -272,10 +274,10 @@ public class Google_PlaceMatch: PlaceMatch {
         }
         self.task?.execute()
     }
-
+    
 }
 
-
+#if os(iOS)
 final public class FindPlaceRequest_Apple: NSObject, FindPlaceRequest, MKLocalSearchCompleterDelegate {
     
     private var task: MKLocalSearchCompleter
@@ -289,6 +291,7 @@ final public class FindPlaceRequest_Apple: NSObject, FindPlaceRequest, MKLocalSe
     public var timeout: TimeInterval
     
     public func execute() {
+        task.delegate = self
         task.queryFragment = self.input
     }
     
@@ -308,10 +311,10 @@ final public class FindPlaceRequest_Apple: NSObject, FindPlaceRequest, MKLocalSe
         for result in completer.results {
             let place = Apple_PlaceMatch(localSearchCompletion: result, for: input)
             results.append(place)
-            self.success?(results)
         }
+        self.success?(results)
     }
-
+    
     public func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
         self.failure?(LocationError.other(error.localizedDescription))
     }
@@ -333,7 +336,13 @@ final public class Apple_PlaceMatch: PlaceMatch {
     
     init(localSearchCompletion: MKLocalSearchCompletion, for input: String) {
         self.mainText = localSearchCompletion.title
-        self.secondaryText = localSearchCompletion.subtitle
+        if localSearchCompletion.subtitle.isEmpty, let lastComponent = mainText.split(separator: ",").last {
+            let charSet = CharacterSet(charactersIn: " ")
+            let string = lastComponent.trimmingCharacters(in: charSet)
+            self.secondaryText = string
+        } else {
+            self.secondaryText = localSearchCompletion.subtitle
+        }
         self.localSearchCompletion = localSearchCompletion
         self.input = input
     }
@@ -345,7 +354,7 @@ final public class Apple_PlaceMatch: PlaceMatch {
         localSearch = MKLocalSearch(request: request)
         localSearch?.start(completionHandler: { response, error in
             if let error = error {
-               onFail?(LocationError.other(error.localizedDescription))
+                onFail?(LocationError.other(error.localizedDescription))
             } else if let response = response {
                 if response.mapItems.count > 0, let item = response.mapItems.first {
                     if let place = Place(placemark: item.placemark) {
@@ -360,3 +369,4 @@ final public class Apple_PlaceMatch: PlaceMatch {
         })
     }
 }
+#endif
