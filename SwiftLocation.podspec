@@ -9,10 +9,10 @@ Pod::Spec.new do |s|
   s.license      = { :type => "MIT", :file => "LICENSE" }
   s.author             = { "Daniele Margutti" => "me@danielemargutti.com" }
   s.social_media_url   = "http://twitter.com/danielemargutti"
-  s.ios.deployment_target = "9.0"
+  s.ios.deployment_target = "9.3"
   s.watchos.deployment_target = "3.0"
   s.source       = { :git => "https://github.com/malcommac/SwiftLocation.git", :tag => s.version.to_s }
   s.source_files  = "Sources/**/*"
   s.frameworks  = "Foundation","CoreLocation","MapKit"
-  s.dependency 'SwiftyJSON', '~> 4.0.0-alpha.1'
+  s.dependency 'SwiftyJSON', '~> 4.1.0'
 end

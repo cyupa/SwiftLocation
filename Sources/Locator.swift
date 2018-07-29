@@ -345,19 +345,10 @@ public class LocatorManager: NSObject, CLLocationManagerDelegate {
 	/// - Parameters:
 	///   - text: text to search
 	///   - timeout: timeout, `nil` uses default 10-seconds timeout interval
+    ///   - service: service to use, `nil` to user apple's built in service
 	///   - onSuccess: success callback
 	///   - onFail: failure callback
 	/// - Returns: request
-	@discardableResult
-    public func autocompletePlaces(with text: String, timeout: TimeInterval? = nil, language: FindPlaceRequest_Google_Language? = nil,
-	                         onSuccess: @escaping FindPlaceRequest_Success, onFail: @escaping FindPlaceRequest_Failure) -> FindPlaceRequest {
-        let request = FindPlaceRequest_Google(input: text, timeout: timeout, language: language)
-		request.success = onSuccess
-		request.failure = onFail
-		request.execute()
-		return request
-	}
-    
     @discardableResult
     public func autocompletePlaces(with text: String,
                                    timeout: TimeInterval? = nil,
