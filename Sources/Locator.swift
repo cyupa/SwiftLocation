@@ -345,10 +345,11 @@ public class LocatorManager: NSObject, CLLocationManagerDelegate {
 	/// - Parameters:
 	///   - text: text to search
 	///   - timeout: timeout, `nil` uses default 10-seconds timeout interval
-    ///   - service: service to use, `nil` to user apple's built in service
+	///   - service: service to use, `nil` to user apple's built in service
 	///   - onSuccess: success callback
 	///   - onFail: failure callback
 	/// - Returns: request
+#if os(iOS)
     @discardableResult
     public func autocompletePlaces(with text: String,
                                    timeout: TimeInterval? = nil,
@@ -370,6 +371,7 @@ public class LocatorManager: NSObject, CLLocationManagerDelegate {
         request.execute()
         return request
     }
+#endif
 	
 	// MARK: DEVICE HEADING FUNCTIONS
 	
