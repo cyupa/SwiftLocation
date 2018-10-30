@@ -91,7 +91,7 @@ public class FindPlaceRequest_Google: FindPlaceRequest {
                 self.failure?(LocationError.other("Wrong google response"))
                 return
             }
-            let places = Google_PlaceMatch.load(list: json["predictions"].arrayValue)
+            let places = Google_PlaceMatch.load(list: json["predictions"].arrayValue, language: lang)
             self.success?(places)
         }
         self.task?.execute()
@@ -238,17 +238,21 @@ public class Google_PlaceMatch: PlaceMatch {
     /// Place detail cache
     public private(set) var detail: Place?
     
-    public init?(_ json: JSON) {
+    /// Place detail language
+    private var language: String
+    
+    public init?(_ json: JSON, language: String) {
         guard let placeID = json["place_id"].string else { return nil }
         self.placeID = placeID
         self.name = json["description"].stringValue
         self.mainText = json["structured_formatting"]["main_text"].stringValue
         self.secondaryText = json["structured_formatting"]["secondary_text"].stringValue
         self.types = json["types"].arrayValue.map { $0.stringValue }
+        self.language = language
     }
     
-    public static func load(list: [JSON]) -> [PlaceMatch] {
-        return list.compactMap { Google_PlaceMatch($0) }
+    public static func load(list: [JSON], language: String) -> [PlaceMatch] {
+        return list.compactMap { Google_PlaceMatch($0, language: language) }
     }
     
     public func detail(timeout: TimeInterval? = nil,
@@ -262,7 +266,7 @@ public class Google_PlaceMatch: PlaceMatch {
             onFail?(LocationError.missingAPIKey(forService: "google"))
             return
         }
-        let url = URL(string: "https://maps.googleapis.com/maps/api/place/details/json?placeid=\(self.placeID)&key=\(APIKey)")!
+        let url = URL(string: "https://maps.googleapis.com/maps/api/place/details/json?placeid=\(self.placeID)&key=\(APIKey)&language=\(language)")!
         self.task = JSONOperation(url, timeout: timeout ?? 10)
         self.task?.onSuccess = { [weak self] json in
             guard let `self` = self else { return }
@@ -350,7 +354,7 @@ final public class Apple_PlaceMatch: PlaceMatch {
     public func detail(timeout: TimeInterval? = nil,
                        onSuccess: @escaping ((Place) -> (Void)),
                        onFail: ((LocationError) -> (Void))? = nil) {
-        let request = MKLocalSearchRequest(completion: localSearchCompletion)
+        let request = MKLocalSearch.Request(completion: localSearchCompletion)
         localSearch = MKLocalSearch(request: request)
         localSearch?.start(completionHandler: { response, error in
             if let error = error {
